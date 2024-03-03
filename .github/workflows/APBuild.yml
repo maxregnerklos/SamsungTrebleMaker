@@ -142,9 +142,9 @@ jobs:
           FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
           echo $FMV
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $${FMV} -o $${FWFileName}
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v A505FDDS9CWA2/A505FODM9CVH1/A505FXXS9CWA2 -o $${FWFileName}
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $${FMV} -i $${FWFileName} -V 4 -o latestFW.zip
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v A505FDDS9CWA2/A505FODM9CVH1/A505FXXS9CWA2 -i $${FWFileName} -V 4 -o latestFW.zip
         
       - name: Unzip Firmware and Extract AP
         run: |
