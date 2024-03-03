@@ -44,8 +44,8 @@ jobs:
     outputs:
       jobinfo: ${{ steps.get-url.outputs.finalurl }}
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v2.3.0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
         with:
           python-version: "3.10"
             
@@ -118,8 +118,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: urlfinder
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v2.3.0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
         with:
           python-version: "3.10"
             
@@ -139,12 +139,12 @@ jobs:
       - name: Download and Decrypt Firmware
         run: |
           FWFileName="latestFW.zip.enc4"
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate -v 9)
           echo $FMV
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v A505FDDS9CWA2/A505FODM9CVH1/A505FXXS9CWA2 -o $${FWFileName}
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v ${FMV} -o ${FWFileName}
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v A505FDDS9CWA2/A505FODM9CVH1/A505FXXS9CWA2 -i $${FWFileName} -V 4 -o latestFW.zip
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v ${FMV} -i ${FWFileName} -V 4 -o latestFW.zip
         
       - name: Unzip Firmware and Extract AP
         run: |
@@ -196,8 +196,8 @@ jobs:
            pwd
            ls
          
-       - name: Set up Python
-         uses: actions/setup-python@v2.3.0
+       - name: Set up Python ${{ matrix.python-version }}
+         uses: actions/setup-python@v4
          with:
           python-version: "3.10"
           
