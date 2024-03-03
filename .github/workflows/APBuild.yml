@@ -8,7 +8,7 @@ on:
         required: True
         type: choice
         options:
-          - SM-A505F
+          - SM-A505FDD
       region:
         description: "Device Region"
         required: true
