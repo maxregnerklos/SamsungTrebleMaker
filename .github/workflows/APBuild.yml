@@ -152,6 +152,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get install simg2img lz4 unzip
+          pip3 install git+https://github.com/samloader/samloader.git
 
       - name: Download and Decrypt Firmware
         run: |
