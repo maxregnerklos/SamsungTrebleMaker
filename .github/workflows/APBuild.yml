@@ -5,7 +5,7 @@ on:
     inputs:
       device:
         description: "Device Model Number"
-        required: True
+        required: true
         type: choice
         options:
           - SM-A505F
@@ -44,8 +44,8 @@ jobs:
     outputs:
       jobinfo: ${{ steps.get-url.outputs.finalurl }}
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2.3.0
         with:
           python-version: "3.10"
             
@@ -118,8 +118,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: urlfinder
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2.3.0
         with:
           python-version: "3.10"
             
@@ -137,14 +137,14 @@ jobs:
           pip3 install git+https://github.com/samloader/samloader.git
       
       - name: Download and Decrypt Firmware
-  run: |
-    FWFileName="latestFW.zip.enc4"
-    FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate -v 9)
-    echo $FMV
-    echo "Downloading latest update"
-    samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v ${FMV} -o ${FWFileName}
-    echo "Decrypting Update Files"
-    samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v ${FMV} -i ${FWFileName} -V 4 -o latestFW.zip
+        run: |
+          FWFileName="latestFW.zip.enc4"
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate -v 9)
+          echo $FMV
+          echo "Downloading latest update"
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $${FMV} -o $${FWFileName}
+          echo "Decrypting Update Files"
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $${FMV} -i $${FWFileName} -V 4 -o latestFW.zip
         
       - name: Unzip Firmware and Extract AP
         run: |
@@ -196,8 +196,8 @@ jobs:
            pwd
            ls
          
-       - name: Set up Python ${{ matrix.python-version }}
-         uses: actions/setup-python@v4
+       - name: Set up Python
+         uses: actions/setup-python@v2.3.0
          with:
           python-version: "3.10"
           
@@ -229,7 +229,3 @@ jobs:
            name: |
             AP_Files
             super_image
-        
-          
-
-
