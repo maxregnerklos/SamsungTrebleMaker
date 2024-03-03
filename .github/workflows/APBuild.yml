@@ -113,16 +113,27 @@ jobs:
             
             finalurlquery=".assets[] | ${appTest} ${archTest} ${vndkliteTest} ${secureTest} .browser_download_url"
             echo "URL_QUERY=${finalurlquery}" >> $GITHUB_ENV
-              
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install jq
+          pip3 install git+https://github.com/samloader/samloader.git
+
+      - name: Get Firmware Version
+        id: get-firmware-version
+        run: |
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate | jq -r '.version.latest')
+          echo "::set-output name=FIRMWARE_VERSION::$FMV"
+        
   build:
-    runs-on: ubuntu-20.04
     needs: urlfinder
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: "3.10"
-            
+
       - name: Checkout Repository
         uses: actions/checkout@v2
         
@@ -133,19 +144,17 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install simg2img lz4 unzip jq
-          pip3 install git+https://github.com/samloader/samloader.git
-      
+          sudo apt-get install simg2img lz4 unzip
+
       - name: Download and Decrypt Firmware
         run: |
+          FMV=${{ needs.urlfinder.outputs.jobinfo }}
           FWFileName="latestFW.zip.enc4"
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate -v 9)
-          echo $FMV
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v ${FMV} -o ${FWFileName}
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v "${FMV}" -o "${FWFileName}"
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v ${FMV} -i ${FWFileName} -V 4 -o latestFW.zip
-        
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v "${FMV}" -i "${FWFileName}" -V 4 -o latestFW.zip
+
       - name: Unzip Firmware and Extract AP
         run: |
           echo $FMV
