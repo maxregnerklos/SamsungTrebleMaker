@@ -9,20 +9,12 @@ on:
         type: choice
         options:
           - SM-A505F
-          - SM-A505FN
-          - SM-A505GN
-          - SM-A505G
-          - SM-A505FM
-          - SM-A505YN
       region:
         description: "Device Region"
         required: true
         type: choice
         options:
           - INS
-          - XSG
-          - ACR
-          - TUR
           - XSG
       arch:
         description: "Device Architecture"
@@ -52,132 +44,87 @@ jobs:
     outputs:
       jobinfo: ${{ steps.get-url.outputs.finalurl }}
     steps:
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: "3.10"
-      
+            
       - name: Generate URL
         id: get-url
         run: |
-          import os
-
-          env_file = os.getenv('GITHUB_ENV')
-
-          url = {}
-          apps = "${{ github.event.inputs.apps }}"
-          arch = "${{ github.event.inputs.arch }}"
-          vndklite = "${{ github.event.inputs.vndklite }}"
-          secure = "${{ github.event.inputs.secure }}"
-          
-          # Adjust appTest based on selected apps
-          if apps == "gapps":
-            appTest = 'select(.name | test("gapps")) | select(.name | test("gogapps") | not) |'
-          elif apps == "gogapps":
-            appTest = 'select(.name | test("gogapps")) |'
-          elif apps == "floss":
-            appTest = 'select(.name | test("floss")) |'
-          else:
-            appTest = 'select(.name | test("vanilla"))'
-          
-          # Adjust archTest based on selected architecture
-          if arch == "arm32":
-            archTest = 'select(.name | test("arm32_binder64")) |'
-            if apps != "gapps":
-              appTest = 'select(.name | test("gogapps")) |'
-            else:
-              appTest = 'select(.name | test("vanilla")) |'
-          else:
-            archTest = 'select(.name | test("arm64")) |'
-          
-          # Adjust vndkliteTest based on vndklite selection
-          if vndklite:
-            vndkliteTest = 'select(.name | test("vndklite")) |'
-          else:
-            vndkliteTest = 'select(.name | test("vndklite") | not) |'
-          
-          # Adjust secureTest based on secure selection
-          if secure:
-            secureTest = 'select(.name | test("secure")) |'
-            vndkliteTest = 'select(.name | test("vndklite")) |'
-          else:
-            secureTest = 'select(.name | test("secure") | not) |'
-          
-          finalurlquery = f".assets[] | {appTest} {archTest} {vndkliteTest} {secureTest} .browser_download_url"
-          with open(env_file, "a") as g:
-            print(f"URL_QUERY={finalurlquery}\n")
-            g.write(f"URL_QUERY={finalurlquery}\n")
-
-                
-    
+            apps=${{ github.event.inputs.apps }}
+            arch=${{ github.event.inputs.arch }}
+            vndklite=${{ github.event.inputs.vndklite }}
+            secure=${{ github.event.inputs.secure }}
+            
+            case "$apps" in
+              "gapps")
+                appTest='select(.name | test("gapps")) | select(.name | test("gogapps") | not) |'
+                ;;
+              "gogapps")
+                appTest='select(.name | test("gogapps")) |'
+                ;;
+              "floss")
+                appTest='select(.name | test("floss")) |'
+                ;;
+              *)
+                appTest='select(.name | test("vanilla"))'
+                ;;
+            esac
+            
+            case "$arch" in
+              "arm32")
+                archTest='select(.name | test("arm32_binder64")) |'
+                case "$apps" in
+                  "gapps")
+                    appTest='select(.name | test("gogapps")) |'
+                    ;;
+                  "gogapps")
+                    appTest='select(.name | test("gogapps")) |'
+                    ;;
+                  *)
+                    appTest='select(.name | test("vanilla")) |'
+                    ;;
+                esac
+                ;;
+              *)
+                archTest='select(.name | test("arm64")) |'
+                ;;
+            esac
+            
+            case "$vndklite" in
+              "true")
+                vndkliteTest='select(.name | test("vndklite")) |'
+                ;;
+              *)
+                vndkliteTest='select(.name | test("vndklite") | not) |'
+                ;;
+            esac
+            
+            case "$secure" in
+              "true")
+                secureTest='select(.name | test("secure")) |'
+                vndkliteTest='select(.name | test("vndklite")) |'
+                ;;
+              *)
+                secureTest='select(.name | test("secure") | not) |'
+                ;;
+            esac
+            
+            finalurlquery=".assets[] | ${appTest} ${archTest} ${vndkliteTest} ${secureTest} .browser_download_url"
+            echo "URL_QUERY=${finalurlquery}" >> $GITHUB_ENV
+              
   build:
     runs-on: ubuntu-20.04
     needs: urlfinder
     steps:
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.10" 
+          python-version: "3.10"
             
-      - name: Generate URL
-        id: get-url
-        shell: python
-        run: |
-            import os
-
-            env_file = os.getenv('GITHUB_ENV')
-
-
-            url = {}
-            apps = "${{ github.event.inputs.apps }}"
-            arch = "${{ github.event.inputs.arch }}"
-            vndklite = "${{ github.events.inputs.vndklite }}"
-            secure = "${{ github.events.inputs.secure }}"
-            
-            match apps:
-              case "gapps":
-                appTest = 'select(.name | test(\\"gapps\\")) | select(.name | test(\\"gogapps\\") | not) |';
-              case "gogapps":
-                appTest = 'select(.name | test(\\"gogapps\\")) |';
-              case "floss":
-                appTest = 'select(.name | test(\\"floss\\")) |';
-              case _:
-                appTest = 'select(.name | test(\\"vanilla\\"))';
-            
-            
-            match arch:
-              case "arm32":
-                archTest = 'select(.name | test(\\"arm32_binder64\\")) |';
-                match apps:
-                  case "gapps":
-                    appTest = 'select(.name | test(\\"gogapps\\")) |';
-                  case "gogapps":
-                    appTest = 'select(.name | test(\\"gogapps\\")) |';
-                  case _:
-                    appTest = 'select(.name | test(\\"vanilla\\")) |';
-              case _:
-                archTest = 'select(.name | test(\\"arm64\\")) |';
-            
-            match vndklite:
-              case "true":
-                vndkliteTest = 'select(.name | test(\\"vndklite\\")) |';
-              case _:
-                vndkliteTest = 'select(.name | test(\\"vndklite\\") | not) |';
-            
-            match secure:
-              case "true":
-                secureTest = 'select(.name | test(\\"secure\\")) |';
-                vndkliteTest = 'select(.name | test(\\"vndklite\\")) |';
-              case _:
-                secureTest = 'select(.name | test(\\"secure\\") | not) |';
-            
-            finalurlquery = f".assets[] | {appTest} {archTest} {vndkliteTest} {secureTest} .browser_download_url";
-            with open(env_file, "a") as g:
-              print(f"URL_QUERY={finalurlquery}\n")
-              g.write(f"URL_QUERY={finalurlquery}\n")
-
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         
       - name: Add OTATools PATH Environment
         run: |
@@ -188,19 +135,16 @@ jobs:
         run: |
           sudo apt-get install simg2img lz4 unzip jq
           pip3 install git+https://github.com/samloader/samloader.git
-          echo $GITHUB_WORKSPACE
-          echo ${{ github.event.inputs.device }}
-          echo ${{ github.event.inputs.region }}
       
       - name: Download and Decrypt Firmware
         run: |
           FWFileName="latestFW.zip.enc4"
-          export FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
           echo $FMV
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $(echo $FMV) -o $(echo $FWFileName)
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v ${FMV} -o ${FWFileName}
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $(echo $FMV) -i $(echo $FWFileName) -V 4 -o latestFW.zip
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v ${FMV} -i ${FWFileName} -V 4 -o latestFW.zip
         
       - name: Unzip Firmware and Extract AP
         run: |
@@ -239,106 +183,6 @@ jobs:
           name: AP_Files
           path: APFiles/APExtracted/*.img.lz4
 
-
-      
-      - name: Replace old system image and measure size of partitions
-        id: imageSizes
-        run: |
-          cd APFiles/APExtracted/superImageFiles/
-          rm system.img
-          echo print query
-          echo " ${{ env.URL_QUERY }} "
-          echo run query
-          finalAddress=$(curl -s https://api.github.com/repos/phhusson/treble_experimentations/releases/latest | jq -r " ${{ env.URL_QUERY }} " )
-          echo $finalAddress
-          wget $finalAddress -O system.img.xz
-          xz --decompress system.img.xz
-          ls -l
-          # rm ./system.img.xz
-          ODM_SIZE=$(stat -c '%s' odm.img)
-          SYSTEM_SIZE=$(stat -c '%s' system.img)
-          PRODUCT_SIZE=$(stat -c '%s' product.img)
-          VENDOR_SIZE=$(stat -c '%s' vendor.img)
-
-          echo $ODM_SIZE
-          echo $SYSTEM_SIZE
-          echo $PRODUCT_SIZE
-          echo $VENDOR_SIZE
-          
-          echo "::set-output name=ODM_PARTITION_SIZE::$ODM_SIZE"
-          echo "::set-output name=PRODUCT_PARTITION_SIZE::$PRODUCT_SIZE"
-          echo "::set-output name=SYSTEM_PARTITION_SIZE::$SYSTEM_SIZE"
-          echo "::set-output name=VENDOR_PARTITION_SIZE::$VENDOR_SIZE"
-        
-      - name: Get Image Sizes
-        shell: python
-        run: |
-          import subprocess
-          import os
-
-          odmSize = int(subprocess.run(['stat', '-c', "'%s'", 'APFiles/APExtracted/superImageFiles/odm.img'], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("'", ''))
-          systemSize = int(subprocess.run(['stat', '-c', "'%s'", 'APFiles/APExtracted/superImageFiles/system.img'], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("'", ''))
-          productSize = int(subprocess.run(['stat', '-c', "'%s'", 'APFiles/APExtracted/superImageFiles/product.img'], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("'", ''))
-          vendorSize = int(subprocess.run(['stat', '-c', "'%s'", 'APFiles/APExtracted/superImageFiles/vendor.img'], stdout=subprocess.PIPE).stdout.decode('utf-8').replace("'", ''))
-
-          totalSize = odmSize + systemSize + productSize + vendorSize
-          env_file = os.getenv('GITHUB_ENV')
-
-          with open(env_file, "a") as g:
-              g.write(f"TOTAL_SIZE={totalSize}\n")
-      
-      - name: Clear Space
-        run: |
-          cd APFiles/APExtracted
-          ls -l
-          rm *.img.lz4 --verbose
-          
-          
-      - name: Create New Super Image
-        id: superImage
-        run: |
-          cd APFiles/APExtracted/superImageFiles/
-          mkdir ./output
-          echo ${{ steps.superImageSize.outputs.ORIGINAL_SUPER_IMAGE_SIZE }}
-          lpmake --metadata-size 65536 \
-          --super-name super \
-          --metadata-slots 2 \
-          --device super:${{ steps.superImageSize.outputs.ORIGINAL_SUPER_IMAGE_SIZE }} \
-          --group main:${{ env.TOTAL_SIZE }} \
-          --partition odm:readonly:${{ steps.imageSizes.outputs.ODM_PARTITION_SIZE }}:main \
-          --image odm=./odm.img \
-          --partition product:readonly:${{ steps.imageSizes.outputs.PRODUCT_PARTITION_SIZE }}:main \
-          --image product=./product.img \
-          --partition system:readonly:${{ steps.imageSizes.outputs.SYSTEM_PARTITION_SIZE }}:main \
-          --image system=./system.img \
-          --partition vendor:readonly:${{ steps.imageSizes.outputs.VENDOR_PARTITION_SIZE }}:main \
-          --image vendor=./vendor.img \
-          --sparse \
-          --output ./output/super_new.img
-          
-      - name: Test Super Output
-        run: |
-          cd APFiles/APExtracted/superImageFiles/output
-          lz4 -B6 --content-size super_new.img super.img.lz4
-          ls -l
-      
-      - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: super_image
-          path: APFiles/APExtracted/superImageFiles/output/super.img.lz4
-        
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2.0.3
-        with:
-          # The token used to authenticate.
-          token: ${{ github.token }}
-          # The name of the repository.
-          repository:  ${{ github.repository }}
-          # The number of days.
-          retain_days: 0
-          # The minimum runs to keep for each workflow.
-          keep_minimum_runs: 0
   
   compileFiles:
     runs-on: windows-latest
