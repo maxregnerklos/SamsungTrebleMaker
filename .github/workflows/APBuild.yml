@@ -8,7 +8,7 @@ on:
         required: True
         type: choice
         options:
-          - SM-T225
+          - SM-G398FN
       region:
         description: "Device Region"
         required: true
