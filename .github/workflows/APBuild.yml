@@ -10,7 +10,7 @@ on:
         required: true
         type: choice
         options:
-          - SM-G398FN
+          - SM-G398F
       region:
         description: "Device Region"
         type: choice
