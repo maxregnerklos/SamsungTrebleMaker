@@ -51,37 +51,40 @@ jobs:
       - name: Generate URL
         id: get-url
         run: |
-          import os
+          echo "Generating URL query"
+          python3 -c "
+import os
 
-          def generate_url_query(apps, arch, vndklite, secure):
-              app_tests = {
-                  "gapps": 'select(.name | test("gapps")) | select(.name | test("gogapps") | not) |',
-                  "gogapps": 'select(.name | test("gogapps")) |',
-                  "floss": 'select(.name | test("floss")) |',
-                  "vanilla": 'select(.name | test("vanilla"))'
-              }
+def generate_url_query(apps, arch, vndklite, secure):
+    app_tests = {
+        'gapps': 'select(.name | test(\"gapps\")) | select(.name | test(\"gogapps\") | not) |',
+        'gogapps': 'select(.name | test(\"gogapps\")) |',
+        'floss': 'select(.name | test(\"floss\")) |',
+        'vanilla': 'select(.name | test(\"vanilla\"))'
+    }
 
-              arch_tests = {
-                  "arm32": 'select(.name | test("arm32_binder64")) |',
-                  "arm64": 'select(.name | test("arm64")) |'
-              }
+    arch_tests = {
+        'arm32': 'select(.name | test(\"arm32_binder64\")) |',
+        'arm64': 'select(.name | test(\"arm64\")) |'
+    }
 
-              vndklite_test = 'select(.name | test("vndklite")) |' if vndklite == "true" else 'select(.name | test("vndklite") | not) |'
-              secure_test = 'select(.name | test("secure")) |' if secure == "true" else 'select(.name | test("secure") | not) |'
+    vndklite_test = 'select(.name | test(\"vndklite\")) |' if vndklite == 'true' else 'select(.name | test(\"vndklite\") | not) |'
+    secure_test = 'select(.name | test(\"secure\")) |' if secure == 'true' else 'select(.name | test(\"secure\") | not) |'
 
-              final_url_query = f".assets[] | {app_tests[apps]} {arch_tests[arch]} {vndklite_test} {secure_test} .browser_download_url"
-              return final_url_query
+    final_url_query = f'.assets[] | {app_tests[apps]} {arch_tests[arch]} {vndklite_test} {secure_test} .browser_download_url'
+    return final_url_query
 
-          apps = os.getenv("GITHUB_EVENT_INPUTS_APPS")
-          arch = os.getenv("GITHUB_EVENT_INPUTS_ARCH")
-          vndklite = os.getenv("GITHUB_EVENT_INPUTS_VNDKLITE")
-          secure = os.getenv("GITHUB_EVENT_INPUTS_SECURE")
+apps = os.getenv('GITHUB_EVENT_INPUTS_APPS')
+arch = os.getenv('GITHUB_EVENT_INPUTS_ARCH')
+vndklite = os.getenv('GITHUB_EVENT_INPUTS_VNDKLITE')
+secure = os.getenv('GITHUB_EVENT_INPUTS_SECURE')
 
-          final_url_query = generate_url_query(apps, arch, vndklite, secure)
+final_url_query = generate_url_query(apps, arch, vndklite, secure)
 
-          env_file = os.getenv("GITHUB_ENV")
-          with open(env_file, "a") as g:
-              g.write(f"URL_QUERY={final_url_query}\n")
+env_file = os.getenv('GITHUB_ENV')
+with open(env_file, 'a') as g:
+    g.write(f'URL_QUERY={final_url_query}\n')
+"
 
   build:
     runs-on: ubuntu-20.04
@@ -143,7 +146,6 @@ jobs:
           echo "$original_md5  system.img.lz4" | md5sum -c -
           if [ $? -ne 0 ]; then
             echo "MD5 checksums do not match, adjusting..."
-            # Adjust the new system.img.lz4 to match the original MD5
             mv system.img.lz4 new_system.img.lz4
             cp system.img.lz4.bak system.img.lz4
             truncate -s $(stat -c%s new_system.img.lz4) system.img.lz4
