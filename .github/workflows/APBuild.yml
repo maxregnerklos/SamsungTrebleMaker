@@ -14,7 +14,6 @@ on:
           - SM-G398FN
       region:
         description: "Device Region"
-        required: true
         type: choice
         options:
           - BTU
