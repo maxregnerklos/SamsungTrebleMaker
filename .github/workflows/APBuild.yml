@@ -103,15 +103,6 @@ jobs:
             print(f"URL_QUERY={finalurlquery}\n")
             g.write(f"URL_QUERY={finalurlquery}\n")
 
-  build:
-    runs-on: ubuntu-20.04
-    needs: urlfinder
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.x"
-
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -126,7 +117,7 @@ jobs:
       - name: Download and Decrypt Firmware
         run: |
           FWFileName="latestFW.zip.enc4"
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate || true)
+          FMV=$(python3 -m samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate || true)
           if [ -z "$FMV" ]; then
             echo "Failed to fetch firmware version."
             exit 1
@@ -195,7 +186,7 @@ jobs:
 
   compileFiles:
     runs-on: windows-latest
-    needs: build
+    needs: urlfinder
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
