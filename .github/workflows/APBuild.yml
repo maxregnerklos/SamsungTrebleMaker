@@ -52,11 +52,11 @@ jobs:
         id: get-url
         run: |
           echo "Generating URL query"
-          python3 -c " import os
+          python3 -c "import os
 
-        def generate_url_query(apps, arch, vndklite, secure):
-         app_tests = {
-        'gapps': 'select(.name | test(\"gapps\")) | select(.name | test(\"gogapps\") | not) |',
+def generate_url_query(apps, arch, vndklite, secure):
+    app_tests = {
+gapps': 'select(.name | test(\"gapps\")) | select(.name | test(\"gogapps\") | not) |',
         'gogapps': 'select(.name | test(\"gogapps\")) |',
         'floss': 'select(.name | test(\"floss\")) |',
         'vanilla': 'select(.name | test(\"vanilla\"))'
