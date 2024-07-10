@@ -43,9 +43,13 @@ jobs:
       jobinfo: ${{ steps.get-url.outputs.finalurl }}
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
+          python-version: "3.x"
+
+      - name: Install samloader
+        run: |
+          pip3 install git+https://github.com/samloader/samloader.git
 
       - name: Generate URL
         id: get-url
@@ -104,12 +108,12 @@ jobs:
     needs: urlfinder
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
+          python-version: "3.x"
 
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Add OTATools PATH Environment
         run: |
@@ -118,7 +122,6 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get install simg2img lz4 unzip jq
-          pip3 install git+https://github.com/samloader/samloader.git
 
       - name: Download and Decrypt Firmware
         run: |
@@ -185,7 +188,7 @@ jobs:
           fi
 
       - name: Upload AP Files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: AP_Files
           path: APFiles/APExtracted/*.img.lz4
@@ -195,15 +198,15 @@ jobs:
     needs: build
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
+          python-version: "3.x"
 
       - name: Download AP Files
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           path: tar-md5-script-tool
           name: AP_Files
@@ -214,7 +217,7 @@ jobs:
           ./batch.bat
 
       - name: Upload AP Files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: Final AP File
           path: tar-md5-script-tool/temp-folder
