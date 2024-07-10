@@ -1,7 +1,5 @@
-# This is a basic workflow to help you get started with Actions
 name: Treble Creator
 
-# Controls when the workflow will run
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +8,7 @@ on:
         required: true
         type: choice
         options:
-          - SM-G398F
+          - SM-G398FN
       region:
         description: "Device Region"
         type: choice
@@ -38,7 +36,6 @@ on:
         description: "Secure ROM or not"
         type: boolean
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   urlfinder:
     runs-on: ubuntu-latest
@@ -48,8 +45,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10" 
-            
+          python-version: "3.10"
+
       - name: Generate URL
         id: get-url
         shell: python
@@ -101,7 +98,7 @@ jobs:
           with open(env_file, "a") as g:
             print(f"URL_QUERY={finalurlquery}\n")
             g.write(f"URL_QUERY={finalurlquery}\n")
-                
+
   build:
     runs-on: ubuntu-20.04
     needs: urlfinder
@@ -126,11 +123,22 @@ jobs:
       - name: Download and Decrypt Firmware
         run: |
           FWFileName="latestFW.zip.enc4"
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate || true)
+          if [ -z "$FMV" ]; then
+            echo "Failed to fetch firmware version."
+            exit 1
+          fi
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $FMV -o $FWFileName
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $FMV -o $FWFileName || true
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $FMV -i $FWFileName -V 4 -o latestFW.zip
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $FMV -i $FWFileName -V 4 -o latestFW.zip || true
+
+      - name: Check Firmware File
+        run: |
+          if [ ! -f "latestFW.zip" ]; then
+            echo "Failed to download or decrypt firmware."
+            exit 1
+          fi
 
       - name: Unzip Firmware and Extract AP
         run: |
