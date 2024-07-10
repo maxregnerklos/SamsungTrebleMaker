@@ -5,17 +5,16 @@ on:
     inputs:
       device:
         description: "Device Model Number"
-        required: true
+        required: True
         type: choice
         options:
-          - SM-A505F
+          - SM-T225
       region:
         description: "Device Region"
         required: true
         type: choice
         options:
-          - INS
-          - XSG
+          - BTU
       arch:
         description: "Device Architecture"
         default: "arm64"
@@ -44,205 +43,160 @@ jobs:
     outputs:
       jobinfo: ${{ steps.get-url.outputs.finalurl }}
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-            
+
       - name: Generate URL
         id: get-url
         run: |
-            apps=${{ github.event.inputs.apps }}
-            arch=${{ github.event.inputs.arch }}
-            vndklite=${{ github.event.inputs.vndklite }}
-            secure=${{ github.event.inputs.secure }}
-            
-            case "$apps" in
-              "gapps")
-                appTest='select(.name | test("gapps")) | select(.name | test("gogapps") | not) |'
-                ;;
-              "gogapps")
-                appTest='select(.name | test("gogapps")) |'
-                ;;
-              "floss")
-                appTest='select(.name | test("floss")) |'
-                ;;
-              *)
-                appTest='select(.name | test("vanilla"))'
-                ;;
-            esac
-            
-            case "$arch" in
-              "arm32")
-                archTest='select(.name | test("arm32_binder64")) |'
-                case "$apps" in
-                  "gapps")
-                    appTest='select(.name | test("gogapps")) |'
-                    ;;
-                  "gogapps")
-                    appTest='select(.name | test("gogapps")) |'
-                    ;;
-                  *)
-                    appTest='select(.name | test("vanilla")) |'
-                    ;;
-                esac
-                ;;
-              *)
-                archTest='select(.name | test("arm64")) |'
-                ;;
-            esac
-            
-            case "$vndklite" in
-              "true")
-                vndkliteTest='select(.name | test("vndklite")) |'
-                ;;
-              *)
-                vndkliteTest='select(.name | test("vndklite") | not) |'
-                ;;
-            esac
-            
-            case "$secure" in
-              "true")
-                secureTest='select(.name | test("secure")) |'
-                vndkliteTest='select(.name | test("vndklite")) |'
-                ;;
-              *)
-                secureTest='select(.name | test("secure") | not) |'
-                ;;
-            esac
-            
-            finalurlquery=".assets[] | ${appTest} ${archTest} ${vndkliteTest} ${secureTest} .browser_download_url"
-            echo "URL_QUERY=${finalurlquery}" >> $GITHUB_ENV
+          import os
 
-      - name: Clone samloader repository
-        run: git clone https://github.com/samloader/samloader.git
+          def generate_url_query(apps, arch, vndklite, secure):
+              app_tests = {
+                  "gapps": 'select(.name | test("gapps")) | select(.name | test("gogapps") | not) |',
+                  "gogapps": 'select(.name | test("gogapps")) |',
+                  "floss": 'select(.name | test("floss")) |',
+                  "vanilla": 'select(.name | test("vanilla"))'
+              }
 
-      - name: Install samloader
-        run: |
-          cd samloader
-          pip install .
+              arch_tests = {
+                  "arm32": 'select(.name | test("arm32_binder64")) |',
+                  "arm64": 'select(.name | test("arm64")) |'
+              }
 
-      - name: Install Dependencies
-        run: |
-          sudo apt-get install jq
+              vndklite_test = 'select(.name | test("vndklite")) |' if vndklite == "true" else 'select(.name | test("vndklite") | not) |'
+              secure_test = 'select(.name | test("secure")) |' if secure == "true" else 'select(.name | test("secure") | not) |'
 
-      - name: Get Firmware Version
-        id: get-firmware-version
-        run: |
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate | jq -r '.version.latest')
-          echo "::set-output name=FIRMWARE_VERSION::$FMV"
-        
+              final_url_query = f".assets[] | {app_tests[apps]} {arch_tests[arch]} {vndklite_test} {secure_test} .browser_download_url"
+              return final_url_query
+
+          apps = os.getenv("GITHUB_EVENT_INPUTS_APPS")
+          arch = os.getenv("GITHUB_EVENT_INPUTS_ARCH")
+          vndklite = os.getenv("GITHUB_EVENT_INPUTS_VNDKLITE")
+          secure = os.getenv("GITHUB_EVENT_INPUTS_SECURE")
+
+          final_url_query = generate_url_query(apps, arch, vndklite, secure)
+
+          env_file = os.getenv("GITHUB_ENV")
+          with open(env_file, "a") as g:
+              g.write(f"URL_QUERY={final_url_query}\n")
+
   build:
+    runs-on: ubuntu-20.04
     needs: urlfinder
-    runs-on: ubuntu-latest
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
       - name: Checkout Repository
-        uses: actions/checkout@v2
-        
+        uses: actions/checkout@v3
+
       - name: Add OTATools PATH Environment
         run: |
-          export PATH=$PATH:/home/runner/work/SamsungTrebleMaker/SamsungTrebleMaker/otatools/bin/
           echo "/home/runner/work/SamsungTrebleMaker/SamsungTrebleMaker/otatools/bin/" >> $GITHUB_PATH
 
       - name: Install Dependencies
         run: |
-          sudo apt-get install simg2img lz4 unzip
+          sudo apt-get install simg2img lz4 unzip jq
           pip3 install git+https://github.com/samloader/samloader.git
 
       - name: Download and Decrypt Firmware
         run: |
-          FMV=${{ needs.urlfinder.outputs.jobinfo }}
           FWFileName="latestFW.zip.enc4"
+          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate)
           echo "Downloading latest update"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v "${FMV}" -o "${FWFileName}"
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} download -v $FMV -o $FWFileName
           echo "Decrypting Update Files"
-          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v "${FMV}" -i "${FWFileName}" -V 4 -o latestFW.zip
+          samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} decrypt -v $FMV -i $FWFileName -V 4 -o latestFW.zip
 
       - name: Unzip Firmware and Extract AP
         run: |
-          echo $FMV
           mkdir APFiles
           unzip latestFW.zip
-          ls -l
-          mv AP_*.tar.md5 ./APFiles
+          mv AP_*.tar.md5 APFiles/
           cd APFiles
           mkdir APExtracted
-          ls -l
-          tar -xf AP_*.tar.md5 --verbose -C ./APExtracted
-          
-      - name: Measure and unpack super image
-        id: superImageSIze
+          tar -xf AP_*.tar.md5 -C APExtracted
+
+      - name: Backup Original System Image
         run: |
           cd APFiles/APExtracted
-          export PATH=$PATH:/home/runner/work/SamsungTrebleMaker/SamsungTrebleMaker/otatools/bin/
-          chmod +x /home/runner/work/SamsungTrebleMaker/SamsungTrebleMaker/otatools/bin/lpunpack
-          chmod +x /home/runner/work/SamsungTrebleMaker/SamsungTrebleMaker/otatools/bin/lpmake
-          lz4 -d super.img.lz4 super.img
-          simg2img super.img super.ext4.img
-          OG_SUPER_SIZE=$(stat -c '%s' super.ext4.img)
-          echo "::set-output name=ORIGINAL_SUPER_IMAGE_SIZE::$OG_SUPER_SIZE"
-          mkdir superImageFiles
-          ls -l
-          rm super.img.lz4
-          rm super.img
-          lpunpack super.ext4.img ./superImageFiles
-          rm super.ext4.img
-          rm vbmeta.img.lz4
-      
+          cp system.img.lz4 system.img.lz4.bak
+
+      - name: Replace old system image
+        run: |
+          cd APFiles/APExtracted
+          rm system.img
+          finalAddress=$(curl -s https://api.github.com/repos/phhusson/treble_experimentations/releases/latest | jq -r "${{ env.URL_QUERY }}")
+          wget $finalAddress -O system.img.xz
+          xz --decompress system.img.xz
+          lz4 -B6 --content-size system.img system.img.lz4
+
+      - name: Transfer MD5 Checksum
+        run: |
+          cd APFiles/APExtracted
+          original_md5=$(md5sum system.img.lz4.bak | cut -d ' ' -f 1)
+          echo "$original_md5  system.img.lz4" | md5sum -c -
+          if [ $? -ne 0 ]; then
+            echo "MD5 checksums do not match, adjusting..."
+            # Adjust the new system.img.lz4 to match the original MD5
+            mv system.img.lz4 new_system.img.lz4
+            cp system.img.lz4.bak system.img.lz4
+            truncate -s $(stat -c%s new_system.img.lz4) system.img.lz4
+            dd if=new_system.img.lz4 of=system.img.lz4 bs=1 count=$(stat -c%s new_system.img.lz4) conv=notrunc
+            new_md5=$(md5sum system.img.lz4 | cut -d ' ' -f 1)
+            if [ "$original_md5" != "$new_md5" ]; then
+              echo "Failed to adjust MD5 checksum"
+              exit 1
+            fi
+            echo "MD5 checksums match after adjustment"
+          else
+            echo "MD5 checksums match"
+          fi
+
       - name: Upload AP Files
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v3
         with:
           name: AP_Files
           path: APFiles/APExtracted/*.img.lz4
 
-  
   compileFiles:
     runs-on: windows-latest
     needs: build
     steps:
-       - name: Checkout Repository
-         uses: actions/checkout@v3
-         
-       - name: Check working directory and files
-         run: |
-           pwd
-           ls
-         
-       - name: Set up Python ${{ matrix.python-version }}
-         uses: actions/setup-python@v4
-         with:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
           python-version: "3.10"
-          
-       - name: Download AP Files
-         uses: actions/download-artifact@v3.0.0
-         with:
-          path: D:\a\SamsungTrebleMaker\SamsungTrebleMaker\tar-md5-script-tool
+
+      - name: Download AP Files
+        uses: actions/download-artifact@v3
+        with:
+          path: tar-md5-script-tool
           name: AP_Files
-        
-       - name: Download Super Image
-         uses: actions/download-artifact@v3.0.0
-         with:
-          path: D:\a\SamsungTrebleMaker\SamsungTrebleMaker\tar-md5-script-tool
-          name: super_image
-      
-       - name: Build new AP File
-         run: |
+
+      - name: Build new AP File
+        run: |
           cd tar-md5-script-tool
           ./batch.bat
-        
-       - name: Upload AP Files
-         uses: actions/upload-artifact@v3.1.0
-         with:
-           name: Final AP File
-           path: D:\a\SamsungTrebleMaker\SamsungTrebleMaker\tar-md5-script-tool/temp-folder
-        
-       - uses: joutvhu/delete-artifact@v1
-         with:
-           name: |
-            AP_Files
-            super_image
+
+      - name: Upload AP Files
+        uses: actions/upload-artifact@v3
+        with:
+          name: Final AP File
+          path: tar-md5-script-tool/temp-folder
+
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2.0.3
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
