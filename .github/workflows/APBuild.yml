@@ -126,7 +126,7 @@ jobs:
       - name: Download and Decrypt Firmware
         run: |
           FWFileName="latestFW.zip.enc4"
-          FMV=$(samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate || true)
+          FMV=$(-m samloader -m ${{ github.event.inputs.device }} -r ${{ github.event.inputs.region }} checkupdate || true)
           if [ -z "$FMV" ]; then
             echo "Failed to fetch firmware version."
             exit 1
